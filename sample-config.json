@@ -1,0 +1,283 @@
+//sample network config
+//case insensitive
+{
+    "device-id": "xxxxxxxxxx",
+    "tenant-id": "xxxxxxxxxx",
+	"interface": {
+		//single ethernet card setting, see format as follows,
+		//"interface name": {
+		//	"ifname"：["xxx"],
+		//	"proto": "xxx",
+		//	"access": ["telnet", "web", "ssh", "ping", "snmp"]
+		//}
+		"mgmt": {
+			"ifname": ["eth0"],
+			"proto": "dhcp",
+			"access": ["web", "ssh"]
+		},
+		"lan1": {
+			"ifname": ["eth1"],
+			"proto": "static",
+			"ipaddr": "192.168.32.2",
+			"netmask": "255.255.255.0",
+			"gateway": "192.168.32.1",
+			"access": ["snmp", "telnet"]
+		},
+		//bridge setting, see format as follows,
+		//"bridge name": {
+		//	"ifname": ["xxx", "xxx"],
+		//	"type": "bridge",
+		//	"proto": "xxx"
+		//}
+		"br-local": {
+			"ifname": ["eth2", "eth3"],
+			//mandatory option for bridge
+			"type": "bridge",
+			"proto": "static",
+			"ipaddr": "192.168.1.133",
+			"netmask": "255.255.255.0",
+			"gateway": "192.168.1.1",
+			//disable spanning tree protocol
+			"stp": 0
+		},
+		"br-lan1": {
+			"ifname": ["eth4", "eth5"],
+			"type": "bridge",
+			"proto": "dhcp",
+			"access": ["ping"]
+		}
+	},
+	"service": {
+		//by default we disable ssh
+		"ssh": {
+			"enable": "on"
+		},
+		//at most 3 name servers
+		"dns": {
+			"server1": "10.128.0.1",
+			"server2": "10.128.0.2",
+			"server3": "10.128.0.3"
+		},
+		//at most 3 public name servers
+		"dns forward": {
+			"server1": "8.8.8.8",
+			"server2": "8.8.8.4",
+			"server3": "8.8.8.1"
+		},
+		//see format as follows,
+		//"ddns": {
+		//	"provider": "dns service provider name, e.g. www.oray.com"
+		//	"domain": "my domain name"
+		//	"interface": "WAN interface name"
+		//}
+		"ddns": {
+			"provider": "service_provider.org",
+			"domain": "my.example.com",
+			"username": "my_username",
+			"password": "my_password",
+			"interface": "wan",
+			"enabled": 1,
+			"use_https": 1
+		},
+		//see format as follows,
+		//"config name": {
+		//	"interface": "listen on which interface"
+		//	"start": "start leasing address", e.g. 192.168.1.100
+		//	"limit": how many ip addresses inside dhcp ip pool, say 100, then ip range is 192.168.1.100 ~ 192.168.1.200
+		//	"option": e.g. "mtu: 1460", "gateway: 192.168.1.1" to set default gateway
+		//}
+		"dhcp": {
+			"dhcp-on-lan1": {
+				"interface": "lan1",
+				"start": "192.168.32.100",
+				"limit": 100,
+				"option": "gateway: 192.168.32.2"
+			},
+			"dhcp-on-br-local": {
+				"interface": "br-local",
+				"start": "192.168.1.10",
+				"limit": 200,
+				"option": "mtu: 1460"
+			}
+		},
+		//see format as follows
+		"nat": {
+			"rule1": {
+				"target": "SNAT",
+				"dest": "lan",
+				"proto": "tcp",
+				//traffic originates from 10.128.1.100
+				"src_ip": "10.128.1.100",
+				//source address is rewritten to 192.168.1.79
+				"src_dip": "192.168.1.79"
+			},
+			"rule2": {
+				"target": "SNAT",
+				"dest": "lan",
+				"proto": "tcp",
+				//match condition
+				"src_ip": ["192.168.1.100-192.168.1.200", "172.16.12.10-172.16.12.30"],
+				"src_port": ["1-20", "80-100"],
+				"dest_ip": "192.168.1.100",
+				"dest_port":  "3128-3160",
+				//source address is rewritten to 192.168.1.79-192.168.1.90
+				"src_dip": "192.168.1.79-192.168.1.90"
+			},
+			"rule3": {
+				"target": "DNAT",
+				"src": "wan",
+				"proto": "tcp",
+				//destination address is 172.100.23.12
+				"src_dip": "172.100.23.12",
+				//redirect traffic to 10.128.16.35
+				"dest_ip": "10.128.16.35"
+			},
+			"rule4": {
+				"target": "DNAT",
+				"src": "wan",
+				"proto": "tcp",
+				//match condition
+				"src_ip": ["192.168.1.100-192.168.1.200", "172.16.12.10-172.16.12.30"],
+				"src_port": ["1-20", "80-100"],
+				"src_dport": "3128-3160",
+				//redirect traffic to 10.128.16.35
+				"dest_ip": "10.128.16.35"
+			}
+		}
+	},
+	"routing": {
+		//static routing
+		"static": {
+			"rule1": {
+				"network": "172.12.0.0/16",
+				"nexthop": "1.1.1.1"
+			},
+			"rule2": {
+				"network": "10.128.1.10/24",
+				"nexthop": "2.2.2.2"
+			}
+		},
+		//policy-based routing
+		"policy": {
+		    //enable masqueraded
+			"masq": 1,
+			"rule1": {
+				"src_ip": "all",
+				"src_port": "all",
+				"dest_ip": "all",
+				"protocol": "all",
+				"out_dev": "eth1",
+				"next_hop": "10.0.0.1"
+			},
+			"rule2": {
+				"src_ip": "192.168.1.100",
+				"src_port": "12455",
+				"dest_ip": "all",
+				"protocol": "tcp",
+				"port": 80,
+				"out_dev": "eth2",
+				"next_hop": "172.168.0.1"
+			}
+		},
+		"RIP": {
+			"update_timer": 30,
+			"timeout": 180,
+			"gc_timer": 120,
+			//redistribute kernel routing
+			"rt_kernel": "on",
+			//redistribute direct-connected routing
+			"rt_co": "on",
+			//redistribute static routing
+			"rt_static": "on",
+			//redistribute ospf routing
+			"rt_static": "on",
+			"network1": {
+				"address": "172.12.0.0/16"
+			},
+			"network2": {
+				"address": "10.128.1.10/24"
+			}
+		},
+		"OSPF": {
+			"router-id": "10.0.0.1",
+			"default-metric": 100,
+			//redistribute kernel routing
+			"rt_kernel": "on",
+			//redistribute direct-connected routing
+			"rt_co": "on",
+			//redistribute static routing
+			"rt_static": "on",
+			//redistribute ospf routing
+			"rt_ospf": "on",
+			"area1": {
+				"id": "1",
+				//virtual-link setting
+				"virt-link": "10.0.0.1",
+				"type": "normal",
+				"network": "10.0.0.1/24"
+			},
+			"area2": {
+				"id": "2",
+				//virtual-link setting
+				"virt-link": "10.2.0.1",
+				"type": "nssa translate-candidate no-summary"
+			},
+			"area3": {
+				"id": "3",
+				//virtual-link setting
+				"virt-link": "10.200.1.1",
+				"type": "stub"
+			},
+			"interface1": {
+				"ifname": "eth0",
+				"priority": 100,
+				//hello interval time
+				"hello-intval": 200,
+				//retransmit interval time
+				"retran-intval": 200
+			},
+			"interface2": {
+				"ifname": "eth1",
+				"priority": 200,
+				//hello interval time
+				"hello-intval": 200,
+				//retransmit interval time
+				"retran-intval": 200
+			}
+		},
+        "BGP": {
+            //NOTE: Currently we do not know what BGP setting will be like.
+            //It MIGHT looks as follows.
+            "as-number": 12,
+            "router-id": "2.2.2.2",
+            //specify a network announce via bgp
+            "network": {
+                "1": {
+                    "address": "192.168.1.0/23",
+                    "backdoor": "xxx"
+                },
+                "2": {
+                    "address": "10.1.43.0/24",
+                    "route-map": "xxx"
+                }
+            },
+            //specify neighbor router
+            "neighbor": {
+                "1": {
+                    "address": "172.16.11.139",
+                    "remote-as": 15,
+                    "update-source": "xxx",
+                    "ebgp-multihop": 10
+                },
+                "2": {
+                    "address": "10.128.12.200",
+                    "remote-as": 16,
+                    "update-source": "xxx",
+                    "ebgp-multihop": 22
+                }
+            },
+            //keepalive interval time
+            "keepalive": 500
+        }
+	}
+}

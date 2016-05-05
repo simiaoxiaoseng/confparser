@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ "$USER" = "" ]; then
+    export USER=root
+fi
+
+# convert from json to uci
+/usr/bin/python `pwd`/inedge-config.py $@
+
+# call uci reload
+echo "============>"
