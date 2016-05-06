@@ -91,7 +91,7 @@ class Interface:
                 output.write("%s%s\n" % (padding, "option %s '%s'" % (k, value)))
             output.write("\n")
 
-    def Firewall(self):
+    def Firewall(self, output):
         for ifname, conf in self.firewall_conf.items():
             pass
 

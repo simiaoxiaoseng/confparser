@@ -43,8 +43,6 @@ class Service:
         }
         INConvertor.RegisterNamedType(self.name, handler)
 
-Service("service", True, False).Register()
-
 
 
 class ServiceSSH(Service):
@@ -83,8 +81,6 @@ class ServiceSSH(Service):
                 value = {True: '1', False: '0'}[v]
             output.write("%s%s\n" % (padding, "option %s '%s'" % (k, value)))
         output.write("\n")
-
-ServiceSSH().Register()
 
 
 
@@ -165,9 +161,6 @@ class ServiceDHCP(Service): # share conf with dns
             output.write("\n")
 
 
-ServiceDHCP().Register()
-
-
 
 class ServiceDNS(Service): # share conf with dhcp
     def __init__(self):
@@ -179,3 +172,9 @@ class ServiceDNS(Service): # share conf with dhcp
 
     def Input(self, orig_conf):
         pass
+
+
+
+Service("service", True, False).Register()
+ServiceSSH().Register()
+ServiceDHCP().Register()

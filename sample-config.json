@@ -190,7 +190,7 @@
 			//redistribute static routing
 			"rt_static": "on",
 			//redistribute ospf routing
-			"rt_static": "on",
+			"rt_ospf": "on",
 			"network1": {
 				"address": "172.12.0.0/16"
 			},

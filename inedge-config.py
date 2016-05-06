@@ -9,6 +9,7 @@ import tempfile
 from convertor import *
 from interface import *
 from service   import *
+from routing   import *
 
 JOB_HANDLED = 0
 NO_JOB_HANDLER = 1

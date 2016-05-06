@@ -40,6 +40,18 @@ class Utils:
         return True
 
     @classmethod
+    def ValidateNetwork(cls, text):
+        # text, e.g. 192.168.100.0/24
+        netRE = re.compile("^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)/([0-9]*)$")
+        match = netRE.match(text)
+        if match:
+            maskbits = int(match.group(5).strip())
+            if maskbits > 32:
+                return False
+            return True
+        return False
+
+    @classmethod
     def ValidateIPproto(cls, text):
         text = text.lower()
         if not text in ["static", "dhcp", "none"]:
