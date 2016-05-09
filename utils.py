@@ -59,6 +59,21 @@ class Utils:
         return True
 
     @classmethod
+    def ValidateRouteAreaID(cls, text):
+        # text, e.g. 0-4294967295 or 1.1.1.1
+        areaidRE = re.compile("^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+        match = areaidRE.match(text)
+        if match:
+            return True
+        else:
+            numRE = re.compile("^(0|[1-9][0-9]*)$")
+            match = numRE.match(text)
+            if match:
+                if int(text) <= 4294967295:
+                    return True
+        return False
+
+    @classmethod
     def ValidateIfaceExists(cls, iface):
         iface = iface.lower()
         if os.path.exists(os.path.join("/sys/class/net", iface)):

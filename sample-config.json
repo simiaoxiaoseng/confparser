@@ -217,7 +217,7 @@
 				"network": "10.0.0.1/24"
 			},
 			"area2": {
-				"id": "2",
+				"id": "2.2.2.2",
 				//virtual-link setting
 				"virt-link": "10.2.0.1",
 				"type": "nssa translate-candidate no-summary"
@@ -234,7 +234,8 @@
 				//hello interval time
 				"hello-intval": 200,
 				//retransmit interval time
-				"retran-intval": 200
+				"retran-intval": 200,
+                "passive": 1
 			},
 			"interface2": {
 				"ifname": "eth1",
