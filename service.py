@@ -53,6 +53,7 @@ class ServiceSSH(Service):
         self.name = "ssh"
         self.options = ["enable"]
         
+    # public handler
     def Input(self, orig_conf):
         enabled = True
 
@@ -84,11 +85,11 @@ class ServiceSSH(Service):
 
 
 
-class ServiceDHCP(Service): # share conf with dns
+class ServiceDHCP(Service):
     def __init__(self):
         # NOTE: old style python treats the following statement as invalid
-        # super(ServiceDHCP, self).__init__("dhcp", False, True)
-        Service.__init__(self, "dhcp", False, True)
+        # super(ServiceDHCP, self).__init__("dhcp", False, False)
+        Service.__init__(self, "dhcp", False, False)
         self.name = "dhcp"
         self.options = ["interface", "start", "limit", "option"]
 
@@ -116,7 +117,33 @@ class ServiceDHCP(Service): # share conf with dns
             return (syntax_ok, dhcp_option)
 
         return (False, "")
+    
+    def __output_header(self, output):
+        padding = self.indent
 
+        header_lines = "option domainneeded '1',\
+                option boguspriv '1',\
+                option filterwin2k '0',\
+                option localise_queries '1',\
+                option rebind_protection '1',\
+                option rebind_localhost '1',\
+                option local '/lan/',\
+                option domain 'lan',\
+                option expandhosts '1',\
+                option nonegcache '0',\
+                option authoritative '1',\
+                option readethers '1',\
+                option leasefile '/tmp/dhcp.leases',\
+                option resolvfile '/tmp/resolv.conf.auto',\
+                option localservice '1'"
+
+        output.write("config dnsmasq\n")
+        for line in header_lines.split(','):
+            line = line.strip()
+            output.write("%s%s\n" % (padding, line))
+        output.write("\n")
+
+    # public handler
     def Input(self, orig_conf):
         for dhcpname, dhcpconf in orig_conf.items():
             for k, v in dhcpconf.items():
@@ -148,6 +175,8 @@ class ServiceDHCP(Service): # share conf with dns
                     self.service_conf[dhcpname][k] = v
 
     def Output(self, output):
+        self.__output_header(output)
+
         for dhcpname, dhcpconf in self.service_conf.items():
             output.write("config dhcp '%s'\n" % dhcpname)
 
@@ -162,19 +191,102 @@ class ServiceDHCP(Service): # share conf with dns
 
 
 
-class ServiceDNS(Service): # share conf with dhcp
+class ServiceDNS(Service):
     def __init__(self):
         # NOTE: old style python treats the following statement as invalid
-        # super(ServiceDNS, self).__init__("dhcp", False, True)
-        Service.__init__(self, "dhcp", False, True) # a little tricky
+        # super(ServiceDNS, self).__init__("dns", False, False)
+        Service.__init__(self, "dns", False, False) # a little tricky
         self.name = "dns"
-        self.options = []
-
+        self.target_conf_dir = "/etc"
+        self.target_conf_file = "resolv.conf"
+        self.options = ["server1", "server2", "server3"]
+        
+    # public handler
     def Input(self, orig_conf):
-        pass
+        for k, v in orig_conf.items():
+            syntax_ok = True
+            # NOTE: it might not be a good way to access python private method
+            self._Service__option_valid_or_not(k)
+
+            syntax_ok = Utils.ValidateIP(v)
+            if not syntax_ok:
+                raise Exception("Unknown %s value '%s'" % (self.name, v))
+            self.service_conf[k] = v
+
+    def Output(self, output):
+        for k, v in self.service_conf.items():
+            output.write("nameserver %s\n" % v)
+
+
+
+class ServiceDNSForward(Service):
+    pass
+
+
+
+class ServiceDDNS(Service):
+    def __init__(self):
+        # NOTE: old style python treats the following statement as invalid
+        # super(ServiceDDNS, self).__init__("ddns", False, False)
+        Service.__init__(self, "ddns", False, False)
+        self.name = "ddns"
+        self.options = ["provider", "domain", "username", "password", 
+                        "interface", "enabled", "use_https"]
+
+    # private method
+    def __output_header(self, output):
+        padding = self.indent
+
+        header_lines = "option date_format '%F %R',\
+                option log_lines '500',\
+                option allow_local_ip '0'"
+
+        output.write("config ddns \"global\"\n")
+        for line in header_lines.split(','):
+            line = line.strip()
+            output.write("%s%s\n" % (padding, line))
+        output.write("\n")
+    
+    # public handler
+    def Input(self, orig_conf):
+        for k, v in orig_conf.items():
+            enabled = False
+
+            syntax_ok = True
+            # NOTE: it might not be a good way to access python private method
+            self._Service__option_valid_or_not(k)
+
+            if k in ["enabled", "use_https"]:
+                (syntax_ok, enabled) = Utils.ValidateBoolean(str(v))
+            if not syntax_ok:
+                raise Exception("Unknown %s value '%s'" % (self.name, v))
+
+            if k in ["enabled", "use_https"]:
+                self.service_conf[k] = enabled
+            elif k == "provider":
+                self.service_conf["service_name"] = v
+            else:
+                self.service_conf[k] = v
+
+    def Output(self, output):
+        self.__output_header(output)
+        
+        padding = self.indent
+
+        output.write("config service 'myddns_ipv4'\n")
+        for k, v in self.service_conf.items():
+            value = v
+            if isinstance(v, bool):
+                value = {True: '1', False: '0'}[v]
+            else:
+                pass
+            output.write("%s%s\n" % (padding, "option %s '%s'" % (k, value)))
+        output.write("\n")
 
 
 
 Service("service", True, False).Register()
 ServiceSSH().Register()
+ServiceDNS().Register()
+ServiceDDNS().Register()
 ServiceDHCP().Register()

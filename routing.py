@@ -198,7 +198,7 @@ class RoutingRIP(Routing):
         output.write("! \n")
 
 
-
+# TODO
 class RoutingPolicy(Routing):
     def __init__(self):
         # NOTE: old style python treats the following statement as invalid
@@ -390,5 +390,6 @@ class RoutingOSPF(Routing):
 
 Routing("routing", True).Register()
 RoutingStatic().Register()
+#RoutingPolicy().Register()
 RoutingRIP().Register()
 RoutingOSPF().Register()

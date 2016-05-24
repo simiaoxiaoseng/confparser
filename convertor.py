@@ -10,7 +10,7 @@ class INConvertor:
     @classmethod
     def RegisterNamedType(cls, name, handler):
         handlers = ["interface", "service", "routing"]
-        service_handlers = ["ssh", "dhcp"]
+        service_handlers = ["ssh", "dhcp", "dns", "ddns"]
         routing_handlers = ["static", "rip", "policy", "ospf"]
         if not name in (handlers + service_handlers + routing_handlers):
             raise Exception("Unknown type handler '%s'" % name)
