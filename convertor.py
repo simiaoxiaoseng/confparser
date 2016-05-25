@@ -10,7 +10,7 @@ class INConvertor:
     @classmethod
     def RegisterNamedType(cls, name, handler):
         handlers = ["interface", "service", "routing"]
-        service_handlers = ["ssh", "dhcp", "dns", "ddns"]
+        service_handlers = ["ssh", "dhcp", "dns", "ddns", "dns forward"]
         routing_handlers = ["static", "rip", "policy", "ospf"]
         if not name in (handlers + service_handlers + routing_handlers):
             raise Exception("Unknown type handler '%s'" % name)
@@ -57,10 +57,28 @@ class INConvertor:
         return cls.types[name].get("target_conf_file", None)
 
     @classmethod
+    def GetConfigRWMode(cls, name):
+        if not name in cls.types.keys():
+            raise Exception("Unknown type name")
+        return cls.types[name].get("config_rw_mode", None)
+
+    @classmethod
+    def GetDepends(cls, name):
+        if not name in cls.types.keys():
+            raise Exception("Unknown type name")
+        return cls.types[name].get("depends", None)
+
+    @classmethod
     def InputHandler(cls, name):
         if not name in cls.types.keys():
             raise Exception("Unknown type name")
         return cls.types[name].get("input_handler", None)
+
+    @classmethod
+    def AdditionalInputHandler(cls, name):
+        if not name in cls.types.keys():
+            raise Exception("Unknown type name")
+        return cls.types[name].get("additional_input", None)
 
     @classmethod
     def OutputHandler(cls, name):

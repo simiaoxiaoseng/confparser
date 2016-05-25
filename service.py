@@ -12,6 +12,8 @@ class Service:
         self.target_conf_file = conf_file
         self.redirect_to_sub_handler = redirect_to_sub_handler
         self.share_config_file = share_config_file
+        self.config_rw_mode = WRITE_A_NEW_FILE
+        self.depends = [] # some service may depend on others, e.g. dns & dhcp
         self.service_conf = {}
         self.firewall_conf = {}
 
@@ -26,6 +28,9 @@ class Service:
     def Input(self, orig_conf):
         pass
 
+    def AdditionalInput(self, conf_lines):
+        pass
+
     def Output(self, output):
         pass
 
@@ -36,9 +41,12 @@ class Service:
         handler = {
             "redirect_to_sub_handler": self.redirect_to_sub_handler,
             "share_config_file": self.share_config_file,
+            "config_rw_mode": self.config_rw_mode,
+            "depends": self.depends,
             "target_conf_dir": self.target_conf_dir,
             "target_conf_file": self.target_conf_file,
             "input_handler": self.Input,
+            "additional_input": self.AdditionalInput,
             "output_handler": self.Output
         }
         INConvertor.RegisterNamedType(self.name, handler)
@@ -220,7 +228,88 @@ class ServiceDNS(Service):
 
 
 class ServiceDNSForward(Service):
-    pass
+    def __init__(self):
+        # NOTE: old style python treats the following statement as invalid
+        # super(ServiceDNSForward, self).__init__("dns forward", False, False, "rw")
+        Service.__init__(self, "dns forward", False, False)
+        self.name = "dns forward"
+        self.target_conf_file = "dhcp"
+        self.config_rw_mode = UPDATE_AN_EXISTING_FILE
+        self.depends.append("dhcp") # dns forward has to depend on dhcp
+        self.options = ["server1", "server2", "server3"]
+
+        self.lines = None
+
+    # private method
+    def __dnsmasq_conf_line(self, line):
+        keywordRE = re.compile("config.*dnsmasq")
+        if keywordRE.match(line):
+            return True
+        else:
+            return False
+    
+    def __output_header(self, output):
+        padding = self.indent
+
+        header_lines = "option domainneeded '1',\
+                option boguspriv '1',\
+                option filterwin2k '0',\
+                option localise_queries '1',\
+                option rebind_protection '1',\
+                option rebind_localhost '1',\
+                option local '/lan/',\
+                option domain 'lan',\
+                option expandhosts '1',\
+                option nonegcache '0',\
+                option authoritative '1',\
+                option readethers '1',\
+                option leasefile '/tmp/dhcp.leases',\
+                option resolvfile '/tmp/resolv.conf.auto',\
+                option localservice '1'"
+
+        output.write("config dnsmasq\n")
+        for line in header_lines.split(','):
+            line = line.strip()
+            output.write("%s%s\n" % (padding, line))
+
+    # public handler
+    def Input(self, orig_conf):
+        for k, v in orig_conf.items():
+            syntax_ok = True
+            # NOTE: it might not be a good way to access python private method
+            self._Service__option_valid_or_not(k)
+
+            syntax_ok = Utils.ValidateIP(v)
+            if not syntax_ok:
+                raise Exception("Unknown %s value '%s'" % (self.name, v))
+            self.service_conf[k] = v
+
+    def AdditionalInput(self, conf_lines):
+        self.lines = conf_lines
+
+    def Output(self, output):
+        padding = self.indent
+
+        # tricky code
+        newconf = True
+        if self.lines != None:
+            for line in self.lines:
+                if self.__dnsmasq_conf_line(line):
+                    newconf = False
+                    break
+
+        if newconf:
+            self.__output_header(output)
+            for k, v in self.service_conf.items():
+                output.write("%s%s\n" % (padding, "list server '%s'" % v))
+            output.write("\n")
+        else:
+            for line in self.lines:
+                output.write(line)
+                if self.__dnsmasq_conf_line(line):
+                    for k, v in self.service_conf.items():
+                        output.write("%s%s\n" % (padding, "list server '%s'" % v))
+                    self.service_conf = {}
 
 
 
@@ -287,6 +376,7 @@ class ServiceDDNS(Service):
 
 Service("service", True, False).Register()
 ServiceSSH().Register()
+ServiceDHCP().Register()
 ServiceDNS().Register()
 ServiceDDNS().Register()
-ServiceDHCP().Register()
+ServiceDNSForward().Register()

@@ -2,6 +2,9 @@
 
 import os, re
 
+WRITE_A_NEW_FILE = 0
+UPDATE_AN_EXISTING_FILE = 1
+
 class Utils:
     @classmethod
     def ValidateBoolean(cls, text):
